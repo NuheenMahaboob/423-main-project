@@ -1,20 +1,73 @@
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
+import time
+import random
+import math
 
 # Import the temporary developer camera
 from developer_camera import DeveloperCamera
 
 
+last_time = time.time()
+
+MONITOR_WIDTH = 1920
+MONITOR_HEIGHT = 1080
+
+WINDOW_WIDTH = 1300
+WINDOW_HEIGHT = 800
+
+center_x = WINDOW_WIDTH // 2
+center_y = WINDOW_HEIGHT // 2
+
+window_x = (MONITOR_WIDTH - WINDOW_WIDTH) // 2
+window_y = (MONITOR_HEIGHT - WINDOW_HEIGHT) // 2
+# room details
+
+ROOM_WIDTH = 800
+ROOM_DEPTH = 800
+
+WALL_HEIGHT = 150
+WALL_THICKNESS = 20
+
+# player details
+player_x = 0
+player_y = ROOM_DEPTH/2 - 30
+player_z = 0
+player_angle = 180
+leg_height = 100
+body_height = 100
+head_rad = 20
+leg_angle = 0
+walk_phase = 0
+walk_speed = 12  # leg swing speed
+
+move_speed = 100
+moving = False
+
+mouse_locked = True
+mouse_speed = 0.2
+
+# player movement
+w_pressed = False
+s_pressed = False
+a_pressed = False
+d_pressed = False
+
 # =========================================================
 # Camera-related variables
 # =========================================================
 
-camera_pos = (0, 500, 500)
+CAMERA_HEIGHT = 70
+# For first-person:
+CAMERA_DISTANCE = 40
+# For 3rd
+# CAMERA_DISTANCE = 120
+
+camera_pos = (player_x, player_y, CAMERA_HEIGHT)
 
 fovY = 120
 GRID_LENGTH = 600
-rand_var = 423
 
 
 # =========================================================
@@ -22,6 +75,279 @@ rand_var = 423
 # =========================================================
 
 developer_camera = DeveloperCamera()
+
+
+def draw_player():
+    global leg_height, body_height, head_rad, leg_angle
+
+    glPushMatrix()  # Save the current matrix state
+    glTranslatef(player_x, player_y, player_z)
+    glRotatef(player_angle, 0, 0, 1)
+
+    # pura player shrink+ektu baka
+    glScalef(0.2, 0.2, 0.2)
+    glRotatef(20, 0, 0, 1)
+    glTranslatef(50, 0, 0)
+
+    # if gameover:
+    #     glTranslatef(0, 0, 60)
+    #     glRotatef(-90, 1, 0, 0)
+    # body
+    glColor3f(0.333, 0.420, 0.184)
+    glPushMatrix()
+    glTranslatef(0, 0, leg_height)
+    # parameters are: quadric, base radius, top radius, height, slices, stacks
+    gluCylinder(gluNewQuadric(), 20, 35, body_height, 12, 12)
+    glPopMatrix()  # Restore the previous matrix state
+    # head
+    glColor3f(0, 0, 0)
+    glPushMatrix()
+    glTranslatef(0, 0, (leg_height+body_height+head_rad))
+    # parameters are: quadric, radius, slices, stacks
+    gluSphere(gluNewQuadric(), head_rad, 20, 20)
+    glPopMatrix()
+   # leftarm
+    glColor3f(0.2, 0.2, 0.2)
+    glPushMatrix()
+    glTranslatef(-40, 0, body_height+leg_height-15)
+    # parameters are: quadric, radius, slices, stacks
+    gluSphere(gluNewQuadric(), 15, 20, 20)
+
+    glColor3f(1.0, 0.878, 0.741)
+    glTranslatef(0, 15, 0)
+    glRotatef(-90, 1, 0, 0)  # parameters are: angle, x, y, z
+    glRotatef(45, 0, 1, 0)  # parameters are: angle, x, y, z
+    # parameters are: quadric, base radius, top radius, height, slices, stacks
+    gluCylinder(gluNewQuadric(), 8, 5, 60, 12, 12)
+    glPopMatrix()
+
+    # rightarm
+    # right arm er ball
+    glColor3f(0.2, 0.2, 0.2)
+    glPushMatrix()
+    glTranslatef(40, 0, body_height+leg_height-15)
+    # parameters are: quadric, radius, slices, stacks
+    gluSphere(gluNewQuadric(), 15, 20, 20)
+
+    # gun
+    glColor3f(0, 0, 0)
+    glTranslatef(-40, 50, 10)
+    glRotatef(-90, 1, 0, 0)
+    gluCylinder(gluNewQuadric(), 8, 5, 40, 12, 12)
+
+    glTranslatef(0, -10, 5)
+    gluCylinder(gluNewQuadric(), 5, 3, 20, 12, 12)
+    glColor3f(1, 1, 1)
+    glTranslatef(0, 0, 18)
+    gluSphere(gluNewQuadric(), 3, 20, 20)
+
+    glTranslatef(0, 0, -18)
+    glTranslatef(0, 10, -5)
+    glRotatef(90, 1, 0, 0)
+    glTranslatef(+40, -50, -10)
+    # main right arm
+    glColor3f(1.0, 0.878, 0.741)
+    glTranslatef(0, 15, 0)
+    glRotatef(-90, 1, 0, 0)  # parameters are: angle, x, y, z
+    glRotatef(-45, 0, 1, 0)
+    # parameters are: quadric, base radius, top radius, height, slices, stacks
+    gluCylinder(gluNewQuadric(), 8, 5, 60, 12, 12)
+    glPopMatrix()
+
+    # left leg
+    glColor3f(0.2, 0.2, 0.2)
+
+    glPushMatrix()
+
+    glTranslatef(-12, 0, leg_height)
+    glRotatef(leg_angle, 1, 0, 0)
+    glRotatef(180, 1, 0, 0)
+
+    gluCylinder(gluNewQuadric(), 8, 15, leg_height, 12, 12)
+
+    glPopMatrix()
+
+
+# right leg
+    glPushMatrix()
+
+    glTranslatef(12, 0, leg_height)
+    glRotatef(-leg_angle, 1, 0, 0)
+    glRotatef(180, 1, 0, 0)
+
+    gluCylinder(gluNewQuadric(), 8, 15, leg_height, 12, 12)
+
+    glPopMatrix()
+    glPopMatrix()
+
+
+def draw_room():
+
+    global ROOM_WIDTH, ROOM_DEPTH, WALL_HEIGHT, WALL_THICKNESS
+
+    # =========================================================
+    # FLOOR
+    # =========================================================
+
+    glColor3f(0.25, 0.25, 0.25)
+
+    glBegin(GL_QUADS)
+
+    glVertex3f(
+        -ROOM_WIDTH / 2,
+        -ROOM_DEPTH / 2,
+        0
+    )
+
+    glVertex3f(
+        ROOM_WIDTH / 2,
+        -ROOM_DEPTH / 2,
+        0
+    )
+
+    glVertex3f(
+        ROOM_WIDTH / 2,
+        ROOM_DEPTH / 2,
+        0
+    )
+
+    glVertex3f(
+        -ROOM_WIDTH / 2,
+        ROOM_DEPTH / 2,
+        0
+    )
+
+    glEnd()
+
+    # =========================================================
+    # Celing
+    # =========================================================
+
+    glColor3f(0.25, 0.25, 0.25)
+
+    glBegin(GL_QUADS)
+
+    glVertex3f(
+        -ROOM_WIDTH / 2,
+        -ROOM_DEPTH / 2,
+        WALL_HEIGHT
+    )
+
+    glVertex3f(
+        ROOM_WIDTH / 2,
+        -ROOM_DEPTH / 2,
+        WALL_HEIGHT
+    )
+
+    glVertex3f(
+        ROOM_WIDTH / 2,
+        ROOM_DEPTH / 2,
+        WALL_HEIGHT
+    )
+
+    glVertex3f(
+        -ROOM_WIDTH / 2,
+        ROOM_DEPTH / 2,
+        WALL_HEIGHT
+    )
+
+    glEnd()
+
+    # =========================================================
+    # BACK WALL
+    # =========================================================
+
+    glPushMatrix()
+
+    glColor3f(0.35, 0.35, 0.35)
+
+    glTranslatef(
+        0,
+        ROOM_DEPTH / 2,
+        WALL_HEIGHT / 2
+    )
+
+    glScalef(
+        ROOM_WIDTH,
+        WALL_THICKNESS,
+        WALL_HEIGHT
+    )
+
+    glutSolidCube(1)
+
+    glPopMatrix()
+
+    # =========================================================
+    # LEFT WALL
+    # =========================================================
+
+    glPushMatrix()
+
+    glColor3f(0.30, 0.30, 0.30)
+
+    glTranslatef(
+        -ROOM_WIDTH / 2,
+        0,
+        WALL_HEIGHT / 2
+    )
+
+    glScalef(
+        WALL_THICKNESS,
+        ROOM_DEPTH,
+        WALL_HEIGHT
+    )
+
+    glutSolidCube(1)
+
+    glPopMatrix()
+
+    # =========================================================
+    # RIGHT WALL
+    # =========================================================
+
+    glPushMatrix()
+
+    glColor3f(0.30, 0.30, 0.30)
+
+    glTranslatef(
+        ROOM_WIDTH / 2,
+        0,
+        WALL_HEIGHT / 2
+    )
+
+    glScalef(
+        WALL_THICKNESS,
+        ROOM_DEPTH,
+        WALL_HEIGHT
+    )
+
+    glutSolidCube(1)
+
+    glPopMatrix()
+
+    # =========================================================
+    # FRONT WALL
+    # =========================================================
+
+    glPushMatrix()
+
+    glColor3f(0.35, 0.35, 0.35)
+
+    glTranslatef(
+        0,
+        -ROOM_DEPTH / 2,
+        WALL_HEIGHT / 2
+    )
+
+    glScalef(
+        ROOM_WIDTH,
+        WALL_THICKNESS,
+        WALL_HEIGHT
+    )
+
+    glutSolidCube(1)
+
+    glPopMatrix()
 
 
 def draw_text(x, y, text, font=GLUT_BITMAP_HELVETICA_18):
@@ -103,10 +429,30 @@ def draw_shapes():
 
 
 def keyboardListener(key, x, y):
-    """
-    Handles keyboard inputs for player movement, gun rotation,
-    camera updates, cheat mode toggles, and developer mode.
-    """
+    global w_pressed, s_pressed, a_pressed, d_pressed
+    global mouse_locked
+
+    if key == b'w':
+        w_pressed = True
+
+    if key == b's':
+        s_pressed = True
+
+    if key == b'a':
+        a_pressed = True
+
+    if key == b'd':
+        d_pressed = True
+
+    # cursor lock/unlock by pressing ESC
+    if key == b'\x1b':       # ESC key
+        mouse_locked = not mouse_locked
+
+        if mouse_locked:
+            glutSetCursor(GLUT_CURSOR_NONE)
+            glutWarpPointer(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
+        else:
+            glutSetCursor(GLUT_CURSOR_LEFT_ARROW)
 
     # =====================================================
     # Toggle Developer Mode
@@ -117,32 +463,29 @@ def keyboardListener(key, x, y):
         glutPostRedisplay()
         return
 
-    # =====================================================
-    # Normal Game Controls
-    # =====================================================
-
-    # Move forward
-    # if key == b'w':
-
-    # Move backward
-    # if key == b's':
-
-    # Rotate gun left
-    # if key == b'a':
-
-    # Rotate gun right
-    # if key == b'd':
-
-    # Toggle cheat mode
-    # if key == b'c':
-
-    # Toggle cheat vision
-    # if key == b'v':
-
-    # Reset the game
-    # if key == b'r':
-
     glutPostRedisplay()
+
+# Extra add kortesi
+
+
+def keyboardUpListener(key, x, y):
+    global w_pressed, s_pressed, a_pressed, d_pressed, moving
+
+    if key == b'w':
+        w_pressed = False
+        moving = False
+
+    if key == b's':
+        s_pressed = False
+        moving = False
+
+    if key == b'a':
+        a_pressed = False
+        moving = False
+
+    if key == b'd':
+        d_pressed = False
+        moving = False
 
 
 def specialKeyListener(key, x, y):
@@ -182,7 +525,6 @@ def mouseListener(button, state, x, y):
     """
     Handles mouse inputs.
     """
-
     # =====================================================
     # Developer Mode Mouse Controls
     # =====================================================
@@ -210,11 +552,26 @@ def mouseListener(button, state, x, y):
 
     pass
 
+# Extra add kortesi
+
 
 def mouseMotion(x, y):
-    """
-    Handles mouse dragging for Developer Mode.
-    """
+    global player_angle, center_x, center_y
+
+    global mouse_locked, mouse_speed
+
+    center_x = WINDOW_WIDTH // 2
+    center_y = WINDOW_HEIGHT // 2
+
+    if not mouse_locked:
+        return
+
+    dx = x - center_x
+
+    if dx != 0:
+        player_angle -= dx * mouse_speed
+
+    glutWarpPointer(center_x, center_y)
 
     if developer_camera.enabled:
 
@@ -228,7 +585,7 @@ def setupCamera():
     """
     Configures the camera's projection and view settings.
     """
-
+    global camera_pos, CAMERA_DISTANCE, CAMERA_HEIGHT
     # =====================================================
     # Projection Matrix
     # =====================================================
@@ -238,9 +595,9 @@ def setupCamera():
 
     gluPerspective(
         fovY,
-        1.25,
+        WINDOW_WIDTH/WINDOW_HEIGHT,
         0.1,
-        1500
+        2000
     )
 
     # =====================================================
@@ -264,19 +621,123 @@ def setupCamera():
     # Normal Game Camera
     # =====================================================
 
-    x, y, z = camera_pos
+    angle = math.radians(player_angle)
+
+    # Player's forward direction
+    forward_x = -math.sin(angle)
+    forward_y = math.cos(angle)
+
+    # Camera goes BEHIND the player
+    camera_x = player_x - forward_x * CAMERA_DISTANCE
+    camera_y = player_y - forward_y * CAMERA_DISTANCE
+    camera_z = CAMERA_HEIGHT
+
+    camera_pos = (
+        camera_x,
+        camera_y,
+        camera_z
+    )
+
+    # Look some distance in front of the player
+    look_distance = 100
+
+    target_x = player_x
+    target_y = player_y
+    target_z = 70
 
     gluLookAt(
-        x, y, z,        # Camera position
-        0, 0, 0,        # Look-at target
-        0, 0, 1         # Up vector
+        camera_x,
+        camera_y,
+        camera_z,
+
+        target_x,
+        target_y,
+        target_z,
+
+        0,
+        0,
+        1
     )
 
 
 def idle():
-    """
-    Idle function that runs continuously.
-    """
+    global player_x, player_y, walk_phase, leg_angle, walk_speed
+    global move_speed, moving
+    global last_time
+    global camera_pos
+
+    # player movement
+    current_time = time.time()
+    delta_time = current_time - last_time
+    last_time = current_time
+    # Prevent huge jumps if the program freezes
+    if delta_time > 0.1:
+        delta_time = 0.1
+
+    angle = math.radians(player_angle)
+
+    # Player's forward direction
+    #
+    # player_angle = 0
+    #       ↓
+    #       +Y
+    #
+    forward_x = -math.sin(angle)
+    forward_y = math.cos(angle)
+
+    # Player's right direction
+    right_x = math.cos(angle)
+    right_y = math.sin(angle)
+
+    moving = False
+    # mouse er shathe shathe change jeno hoi
+
+    # -------------------------
+    # W = FORWARD
+    # -------------------------
+
+    if w_pressed:
+        player_x += forward_x * move_speed * delta_time
+        player_y += forward_y * move_speed * delta_time
+
+        moving = True
+
+    # -------------------------
+    # S = BACKWARD
+    # -------------------------
+
+    if s_pressed:
+        player_x -= forward_x * move_speed * delta_time
+        player_y -= forward_y * move_speed * delta_time
+
+        moving = True
+
+    # -------------------------
+    # D = RIGHT
+    # -------------------------
+
+    if d_pressed:
+        player_x += right_x * move_speed * delta_time
+        player_y += right_y * move_speed * delta_time
+
+        moving = True
+
+    # -------------------------
+    # A = LEFT
+    # -------------------------
+
+    if a_pressed:
+        player_x -= right_x * move_speed * delta_time
+        player_y -= right_y * move_speed * delta_time
+
+        moving = True
+
+    # Walking animation
+    if moving:
+        walk_phase += walk_speed * delta_time
+        leg_angle = 30 * math.sin(walk_phase)
+    else:
+        leg_angle = 0
 
     glutPostRedisplay()
 
@@ -292,81 +753,24 @@ def showScreen():
     glLoadIdentity()
 
     # Set viewport size
-    glViewport(0, 0, 1000, 800)
+    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 
     # Configure camera
     setupCamera()
 
     # =====================================================
-    # Draw a random point
-    # =====================================================
-
-    glPointSize(20)
-
-    glBegin(GL_POINTS)
-
-    glVertex3f(
-        -GRID_LENGTH,
-        GRID_LENGTH,
-        0
-    )
-
-    glEnd()
-
-    # =====================================================
-    # Draw the grid (game floor)
-    # =====================================================
-
-    glBegin(GL_QUADS)
-
-    glColor3f(1, 1, 1)
-
-    glVertex3f(-GRID_LENGTH, GRID_LENGTH, 0)
-    glVertex3f(0, GRID_LENGTH, 0)
-    glVertex3f(0, 0, 0)
-    glVertex3f(-GRID_LENGTH, 0, 0)
-
-    glVertex3f(GRID_LENGTH, -GRID_LENGTH, 0)
-    glVertex3f(0, -GRID_LENGTH, 0)
-    glVertex3f(0, 0, 0)
-    glVertex3f(GRID_LENGTH, 0, 0)
-
-    glColor3f(0.7, 0.5, 0.95)
-
-    glVertex3f(-GRID_LENGTH, -GRID_LENGTH, 0)
-    glVertex3f(-GRID_LENGTH, 0, 0)
-    glVertex3f(0, 0, 0)
-    glVertex3f(0, -GRID_LENGTH, 0)
-
-    glVertex3f(GRID_LENGTH, GRID_LENGTH, 0)
-    glVertex3f(GRID_LENGTH, 0, 0)
-    glVertex3f(0, 0, 0)
-    glVertex3f(0, GRID_LENGTH, 0)
-
-    glEnd()
-
-    # =====================================================
     # Display Game Information
     # =====================================================
-
-    draw_text(
-        10,
-        770,
-        f"A Random Fixed Position Text"
-    )
-
-    draw_text(
-        10,
-        740,
-        f"See how the position and variable change?: {rand_var}"
-    )
+    x, y, z = camera_pos
+    draw_text(10, 770, f"{x} {y} {z}")
 
     # =====================================================
     # Draw Shapes
     # =====================================================
 
-    draw_shapes()
-
+    # draw_shapes()
+    draw_room()
+    draw_player()
     # Swap buffers
     glutSwapBuffers()
 
@@ -385,9 +789,9 @@ def main():
         GLUT_DEPTH
     )
 
-    glutInitWindowSize(1000, 800)
+    glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 
-    glutInitWindowPosition(0, 0)
+    glutInitWindowPosition(window_x, window_y)
 
     glutCreateWindow(
         b"3D OpenGL Intro"
@@ -396,17 +800,18 @@ def main():
     # =====================================================
     # Register Callbacks
     # =====================================================
-
     glutDisplayFunc(showScreen)
 
     glutKeyboardFunc(keyboardListener)
+    glutKeyboardUpFunc(keyboardUpListener)  # Extra add kortesi
 
     glutSpecialFunc(specialKeyListener)
 
     glutMouseFunc(mouseListener)
 
     # Needed for dragging the mouse
-    glutMotionFunc(mouseMotion)
+    glutMotionFunc(mouseMotion)  # Extra add kortesi
+    glutPassiveMotionFunc(mouseMotion)  # Extra add kortesi
 
     glutIdleFunc(idle)
 
