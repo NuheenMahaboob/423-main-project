@@ -38,6 +38,7 @@ player_angle = 180
 leg_height = 100
 body_height = 100
 head_rad = 20
+player_height = leg_height+body_height+(head_rad/2)
 leg_angle = 0
 walk_phase = 0
 walk_speed = 12  # leg swing speed
@@ -58,6 +59,17 @@ d_pressed = False
 # Camera-related variables
 # =========================================================
 
+# Alien details
+alien_x = 100
+alien_y = 0
+alien_z = 10+player_height/4
+alien_angle = 0
+
+human_alien_x = -100
+human_alien_y = 0
+human_alien_z = 10 + player_height/4
+human_alien_angle = 0
+
 CAMERA_HEIGHT = 70
 # For first-person:
 CAMERA_DISTANCE = 40
@@ -75,6 +87,84 @@ GRID_LENGTH = 600
 # =========================================================
 
 developer_camera = DeveloperCamera()
+
+
+def draw_alien(human):
+    global alien_x, alien_y, alien_z
+    global human_alien_x, human_alien_y, human_alien_z, human_alien_angle
+
+    glPushMatrix()  # Save the current matrix state
+    if human:
+        glTranslatef(human_alien_x, human_alien_y, human_alien_z)
+        glRotatef(human_alien_angle, 0, 0, 1)
+    else:
+        glTranslatef(alien_x, alien_y, alien_z)
+        glRotatef(alien_angle, 0, 0, 1)
+
+    # pura alien shrink
+    glScalef(0.3, 0.3, 0.3)
+
+    glPushMatrix()
+    if human:
+        glColor3f(0, 1, 0)
+    else:
+        glColor3f(1, 0, 0)
+
+    glutSolidCube(100)
+
+    glColor3f(1, 1, 0)
+    glTranslatef(28, 50, 30)
+    glRotatef(-135, 0, 1, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+
+    glColor3f(1.0, 0.5, 0.0)
+    glTranslatef(0, 3, 5)
+    gluCylinder(gluNewQuadric(), 3, 0, 12, 20, 20)
+    glTranslatef(0, -3, -5)
+    glRotatef(135, 0, 1, 0)
+    glTranslatef(-56, 0, 0)
+    glRotatef(135, 0, 1, 0)
+
+    glColor3f(1, 1, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+
+    glColor3f(1.0, 0.5, 0.0)
+    glTranslatef(0, 3, 5)
+    gluCylinder(gluNewQuadric(), 3, 0, 12, 20, 20)
+    glTranslatef(0, -3, -5)
+    glRotatef(-135, 0, 1, 0)
+
+    # lower teeth
+    glColor3f(1, 1, 0)
+    glTranslatef(4, 0, -70)
+    glRotatef(-45, 1, 0, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+    glTranslatef(12, 0, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+    glTranslatef(12, 0, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+    glTranslatef(12, 0, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+    glTranslatef(12, 0, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+
+    # upper teeth
+    glRotatef(45, 1, 0, 0)
+    glTranslatef(6, 0, 30)
+    glRotatef(-135, 1, 0, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+    glTranslatef(-12, 0, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+    glTranslatef(-12, 0, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+    glTranslatef(-12, 0, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+    glTranslatef(-12, 0, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+    glTranslatef(-12, 0, 0)
+    gluCylinder(gluNewQuadric(), 5, 0, 30, 20, 20)
+    glPopMatrix()
+    glPopMatrix()
 
 
 def draw_player():
@@ -770,7 +860,10 @@ def showScreen():
 
     # draw_shapes()
     draw_room()
+    draw_alien(False)
+    draw_alien(True)
     draw_player()
+
     # Swap buffers
     glutSwapBuffers()
 
